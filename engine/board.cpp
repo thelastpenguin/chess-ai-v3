@@ -48,15 +48,15 @@ struct __PopulateTables {
         /* populate the hash tables */
         std::mt19937_64 e2(5489u); // known seed for consistent hashing
         std::uniform_int_distribution<long long int> dist(std::llround(std::pow(2,61)), std::llround(std::pow(2,62)));
-        
+
         // initialize piece hashes
         for (int i = 0; i < 64 * 16; ++i)
             pieceHashTable[i] = dist(e2);
-        
+
         // initialize flag hashes
         for (int i = 0; i < 256; ++i)
             flagHashTable[i] = dist(e2);
-        
+
         /* populate the mirror tables */
         for (int i = 0; i < 64; ++i) {
             mirror64[i] = (7 - i / 8) * 8 + i % 8;
@@ -81,12 +81,12 @@ Board::Board() {
 Board::Board(const Board& board) : Board() {
     flags = board.flags;
     hash = flagHashTable[flags];
-    
+
     for (int i = 0; i < BOARD_SIZE; ++i) {
         const int position = mailbox64[i];
         setPiece(position, board[position]);
     }
-    
+
 #ifdef DEBUG_BOARD
     assert(getZobristHash() == board.getZobristHash());
     assert(getScore() == board.getScore());
@@ -253,72 +253,90 @@ void Board::generateMoves(MoveList& moves, TTeam player) const {
         switch (abs(piece)) {
             case PIECE_PAWN:
                 if (piece > 0) {
-                    addMove<CheckMoveLoud, AddMoveLoud>(*this, pos, pos + MAILBOX_W + 1, moves);
-                    addMove<CheckMoveLoud, AddMoveLoud>(*this, pos, pos + MAILBOX_W - 1, moves);
-                    if (addMove<CheckMoveQuiet, AddMoveQuiet>(*this, pos, pos + MAILBOX_W, moves) && i / BOARD_DIM == 1) {
-                        addMove<CheckMoveQuiet, AddMoveQuiet>(*this, pos, pos + MAILBOX_W * 2, moves);
-                    }
+					if (i / BOARD_DIM == 6) {
+						// pawn promotion
+						addMove<CheckMoveLoud, AddMovePawnPromote>(*this, pos, pos + MAILBOX_W + 1, moves);
+						addMove<CheckMoveLoud, AddMovePawnPromote>(*this, pos, pos + MAILBOX_W - 1, moves);
+						addMove<CheckMoveQuiet, AddMovePawnPromote>(*this, pos, pos + MAILBOX_W, moves);
+					} else {
+						addMove<CheckMoveLoud, AddMoveLoud>(*this, pos, pos + MAILBOX_W + 1, moves);
+	                    addMove<CheckMoveLoud, AddMoveLoud>(*this, pos, pos + MAILBOX_W - 1, moves);
+						if (addMove<CheckMoveQuiet, AddMoveQuiet>(*this, pos, pos + MAILBOX_W, moves) && i / BOARD_DIM == 1) {
+	                        addMove<CheckMoveQuiet, AddMoveQuiet>(*this, pos, pos + MAILBOX_W * 2, moves);
+	                    }
+					}
                 } else {
-                    addMove<CheckMoveLoud, AddMoveLoud>(*this, pos, pos - MAILBOX_W + 1, moves);
-                    addMove<CheckMoveLoud, AddMoveLoud>(*this, pos, pos - MAILBOX_W - 1, moves);
-                    if (addMove<CheckMoveQuiet, AddMoveQuiet>(*this, pos, pos - MAILBOX_W, moves) && i / BOARD_DIM == 6) {
-                        addMove<CheckMoveQuiet, AddMoveQuiet>(*this, pos, pos - MAILBOX_W * 2, moves);
-                    }
+					if (i / BOARD_DIM == 1) {
+						// pawn promotion
+						addMove<CheckMoveLoud, AddMovePawnPromote>(*this, pos, pos - MAILBOX_W + 1, moves);
+						addMove<CheckMoveLoud, AddMovePawnPromote>(*this, pos, pos - MAILBOX_W - 1, moves);
+						addMove<CheckMoveQuiet, AddMovePawnPromote>(*this, pos, pos - MAILBOX_W, moves);
+					} else {
+						addMove<CheckMoveLoud, AddMoveLoud>(*this, pos, pos - MAILBOX_W + 1, moves);
+	                    addMove<CheckMoveLoud, AddMoveLoud>(*this, pos, pos - MAILBOX_W - 1, moves);
+						if (addMove<CheckMoveQuiet, AddMoveQuiet>(*this, pos, pos - MAILBOX_W, moves) && i / BOARD_DIM == 6) {
+	                        addMove<CheckMoveQuiet, AddMoveQuiet>(*this, pos, pos - MAILBOX_W * 2, moves);
+	                    }
+					}
                 }
-                
+
+				// TODO: add pawn promotion
+
                 break ;
             case PIECE_KNIGHT:
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos + MAILBOX_W + 2, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos + MAILBOX_W - 2, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos - MAILBOX_W + 2, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos - MAILBOX_W - 2, moves);
-                
+
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos + MAILBOX_W * 2 + 1, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos + MAILBOX_W * 2 - 1, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos - MAILBOX_W * 2 + 1, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos - MAILBOX_W * 2 - 1, moves);
                 break ;
             case PIECE_BISHOP:
-                
+
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos,  MAILBOX_W + 1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos,  MAILBOX_W - 1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos, -MAILBOX_W + 1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos, -MAILBOX_W - 1, moves);
-                
+
                 break ;
             case PIECE_ROOK:
-                
+
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos,  1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos, -1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos,  MAILBOX_W, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos, -MAILBOX_W, moves);
-                
+
                 break ;
             case PIECE_QUEEN:
-                
+
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos,  MAILBOX_W + 1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos,  MAILBOX_W - 1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos, -MAILBOX_W + 1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos, -MAILBOX_W - 1, moves);
-                
+
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos,  1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos, -1, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos,  MAILBOX_W, moves);
                 addSlide<CheckMoveQuiet, AddMoveQuiet, CheckMoveLoud, AddMoveLoud>(*this, pos, -MAILBOX_W, moves);
-                
+
                 break ;
             case PIECE_KING:
-                
+
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos + 1, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos - 1, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos + MAILBOX_W, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos - MAILBOX_W, moves);
-                
+
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos + MAILBOX_W + 1, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos + MAILBOX_W - 1, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos - MAILBOX_W + 1, moves);
                 addMove<CheckMoveGeneric, AddMoveLoud>(*this, pos, pos - MAILBOX_W - 1, moves);
-                
+
+				// TODO: add castling
+
                 break ;
             default:
                 assert(0);
@@ -335,14 +353,14 @@ void Board::setPiece(int position, TPiece value) {
         score -= getPieceScore(position);
         hash ^= pieceHashTable[position * 16 + pieces[position] + 8];
     }
-    
+
     pieces[position] = value;
-    
+
     if (pieces[position] != 0) {
         score += getPieceScore(position);
         hash ^= pieceHashTable[position * 16 + pieces[position] + 8];
     }
-    
+
 #ifdef DEBUG_BOARD
     uint64_t checkHash = flagHashTable[flags];
     int32_t checkScore = 0;
@@ -454,6 +472,7 @@ double kingSquareTableEndGame[] = {
 };
 
 inline TScore Board::getPieceScore(int position) const {
+	// TODO: determine when the end game has been reached!
     const TPiece piece = pieces[position];
     const int position64 = piece < 0 ? mirror64[mailbox[position]] : mailbox[position];
     int sign = piece < 0 ? -1 : 1;
@@ -471,4 +490,3 @@ inline TScore Board::getPieceScore(int position) const {
             return 0;
     }
 }
-

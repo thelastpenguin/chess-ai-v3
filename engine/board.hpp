@@ -13,6 +13,7 @@
 //#define DEBUG_BOARD
 //#define DEBUG_MOVE_GENERATION
 
+#include <iostream>
 #include <cassert>
 #include <stack>
 #include <stdint.h>
@@ -58,7 +59,7 @@ public:
 
     void setPiece(int position, int8_t value);
 
-    const inline int8_t operator[] (int index) const {
+    inline int8_t operator[] (int index) const {
         return pieces[index];
     };
 
@@ -94,7 +95,7 @@ struct Move {
     Type type;
     uint8_t from;
     uint8_t to;
-    uint8_t r1;
+    int8_t r1;
 
     // special storage for sort ordering etc.
     TScore score = kScoreNotYetDetermined;
@@ -131,6 +132,7 @@ struct Move {
                 stack.push(board[to]);
                 board.setPiece(to, r1);
                 board.setPiece(from, 0);
+				break ;
             case Type::CHANGE_FLAG:
                 stack.push(board[from]);
                 stack.push(board[to]);
@@ -139,6 +141,7 @@ struct Move {
                 board.setPiece(to, board[from]);
                 board.setPiece(from, 0);
                 board.setFlags((uint8_t)r1);
+				break ;
 #ifdef DEBUG_MOVE
             default:
                 assert(0);
