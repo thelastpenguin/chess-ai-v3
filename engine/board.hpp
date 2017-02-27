@@ -28,6 +28,8 @@ extern int mirror64[64];
 extern uint64_t pieceHashTable[64 * 16];
 extern uint64_t flagHashTable[256];
 
+extern char pieceGetLetter(TPiece piece);
+
 struct Move;
 
 class Board {

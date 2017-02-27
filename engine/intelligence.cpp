@@ -117,7 +117,7 @@ TScore AIPlayer::pickBestMove(const Board &b, TTeam team, Move *result) {
     while (true) {
         std::cout << "\tDepth: " << i << std::endl;
         Move curResult;
-        TScore curScore = this->negamax(copy, team, i, &curResult, begin_time + CLOCKS_PER_SEC * 8);
+        TScore curScore = this->negamax(copy, team, i, &curResult, begin_time + CLOCKS_PER_SEC * difficulty);
         if (curResult.type != Move::Type::INVALID) {
             *result = curResult;
             score = curScore;
