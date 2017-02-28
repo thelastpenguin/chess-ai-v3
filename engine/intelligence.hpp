@@ -32,8 +32,14 @@ public:
     TScore pickBestMove(const Board& b, TTeam team, Move* result);
 };
 
+struct ScoreFunction {
+	TScore operator() (const Board& board);
+};
+
 class AIPlayer {
 private:
+	ScoreFunction scoreFunc;
+
     static constexpr double runTimeLimit = 2.0;
     int difficulty = 0;
     Move::TMoveScratchStack stack;

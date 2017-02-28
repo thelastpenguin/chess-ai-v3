@@ -40,6 +40,8 @@ private:
     TBoardFlags flags = 0; // uint8_t
     TPiece pieces[120]; // int8_t[120]
     int8_t enPassentSquare; // the en passent square... silly.
+
+	// TODO: add a state history. Prevent searching nodes that result in state repeats. Rippp.
 public:
     Board();
     Board(const Board& board);

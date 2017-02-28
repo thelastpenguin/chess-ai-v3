@@ -242,7 +242,6 @@ inline void addSlide(const Board& board, const int from, const int offset, Board
     addMove<CheckAfter, AddAfter>(board, from, position, moves);
 }
 
-
 void Board::generateMoves(MoveList& moves, TTeam player) const {
     for (int i = 0; i < BOARD_SIZE; ++i) {
         const int pos = mailbox64[i];

@@ -41,7 +41,8 @@ inline TScore TransTable::lookup(uint64_t hash) const {
 /** negamax implementation */
 TScore AIPlayer::negamax(Board& board, TTeam color, int depth, Move* result, clock_t maxTime, TScore alpha, TScore beta) {
     if (depth == 0) {
-        return board.getScore() * color;
+		return scoreFunc(board) * color;
+        // return board.getScore() * color;
     }
 
     TScore max = -std::numeric_limits<TScore>::max();
@@ -130,4 +131,113 @@ TScore AIPlayer::pickBestMove(const Board &b, TTeam team, Move *result) {
     std::cout << "End search. Took " << (float(clock() - begin_time)) / CLOCKS_PER_SEC << " seconds." << std::endl;
 
     return score;
+}
+
+TScore ScoreFunction::operator() (const Board& board) {
+	// determine the piece counts
+	const int pc_offset = 8;
+	int piece_counts[pc_offset * 2] = {0}; // sufficiently large to hold all piece values.
+	for (int i = 0; i < BOARD_SIZE; ++i) {
+		TPiece piece = board[mailbox64[i]];
+		piece_counts[piece + 8]++;
+	}
+
+	// game phase computation
+	const int PawnPhase = 0;
+	const int KnightPhase = 1;
+	const int BishopPhase = 1;
+	const int RookPhase = 2;
+	const int QueenPhase = 4;
+	const int TotalPhase = PawnPhase*16 + KnightPhase*4 + BishopPhase*4 + RookPhase*4 + QueenPhase*2;
+
+	int phase = TotalPhase;
+	phase -= (piece_counts[pc_offset + PIECE_PAWN] + piece_counts[pc_offset - PIECE_PAWN]) * PawnPhase;
+	phase -= (piece_counts[pc_offset + PIECE_KNIGHT] + piece_counts[pc_offset - PIECE_KNIGHT]) * KnightPhase;
+	phase -= (piece_counts[pc_offset + PIECE_BISHOP] + piece_counts[pc_offset - PIECE_BISHOP]) * BishopPhase;
+	phase -= (piece_counts[pc_offset + PIECE_ROOK] + piece_counts[pc_offset - PIECE_ROOK]) * RookPhase;
+	phase -= (piece_counts[pc_offset + PIECE_QUEEN] + piece_counts[pc_offset - PIECE_QUEEN]) * QueenPhase;
+	phase = (phase * 256 + (TotalPhase / 2)) / TotalPhase;
+
+	double materialScore = board.getScore();
+
+
+	int openness = 0;
+	std::vector<Move> movesWhite;
+	movesWhite.reserve(100);
+	std::vector<Move> movesBlack;
+	movesBlack.reserve(100);
+	board.generateMoves(movesWhite, 1);
+	board.generateMoves(movesBlack, -1);
+	openness += (movesWhite.size() - movesBlack.size()) * 10; // TODO: modify openness bias.
+
+	if (phase > 160) {
+		// late game board evaluation
+
+		TScore score = 0;
+		int whiteKingPos = -1;
+		int blackKingPos = -1;
+		for (int i = 0; i < BOARD_SIZE; ++i) {
+			TPiece piece = board[mailbox64[i]];
+			switch (piece) {
+			case PIECE_KING:
+				whiteKingPos = i;
+				break ;
+			case -PIECE_KING:
+				blackKingPos = i;
+				break ;
+			default:
+				break ;
+			}
+		}
+
+		{
+			// KRK end game
+			double whiteKingX = whiteKingPos % BOARD_DIM;
+			double whiteKingY = whiteKingPos / BOARD_DIM;
+			double blackKingX = blackKingPos % BOARD_DIM;
+			double blackKingY = blackKingPos / BOARD_DIM;
+
+			double cmd;
+			double md = std::abs(whiteKingX - blackKingX) + std::abs(whiteKingY - blackKingY);
+			if (materialScore < 0) {
+				cmd = std::abs(BOARD_DIM / 2.0 - blackKingX);
+				cmd += std::abs(BOARD_DIM / 2.0 - blackKingY);
+			} else {
+				cmd = std::abs(BOARD_DIM / 2 - whiteKingX);
+				cmd += std::abs(BOARD_DIM / 2 - whiteKingY);
+			}
+
+			TScore mopupValue = 4.7 * cmd + 16 * (BOARD_DIM - 2 - md);
+			score += (materialScore < 0 ? -mopupValue : mopupValue) * 50;
+		}
+
+		return score;
+	} else {
+		// pawn structure buff
+		// TODO: determine if helping the AI understand pawn struCTUre is actually beneficial
+		//       I think it helps break up opponent's pawn structure though it does not seem to help
+		//       the AI form it's own.
+		TScore score = 0;
+		for (int i = 0; i < BOARD_SIZE; ++i) {
+			const int pos = mailbox64[i];
+			TPiece piece = board[pos];
+			switch (piece) {
+			case PIECE_PAWN:
+				if (board[pos - MAILBOX_W + 1] == PIECE_PAWN)
+					score += 5; // half a centipawn
+				else if (board[pos - MAILBOX_W - 1] == PIECE_PAWN)
+					score += 5; // half a centipawn
+				break ;
+			case -PIECE_PAWN:
+				if (board[pos + MAILBOX_W + 1] == -PIECE_PAWN)
+					score -= 5; // half a centipawn
+				else if (board[pos + MAILBOX_W - 1] == -PIECE_PAWN)
+					score -= 5; // half a centipawn
+				break ;
+			default:
+				continue ;
+			}
+		}
+		return score + materialScore;
+	}
 }
