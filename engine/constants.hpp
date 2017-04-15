@@ -34,5 +34,18 @@ typedef int TTeam;
 
 constexpr TScore kScoreNotYetDetermined = std::numeric_limits<TScore>::max();
 
+extern double pawnSquareTable[BOARD_SIZE];
+
+extern double knightSquareTable[BOARD_SIZE];
+
+extern double bishopSquareTable[BOARD_SIZE];
+
+extern double rookSquareTable[BOARD_SIZE];
+
+extern double queenSquareTable[BOARD_SIZE];
+extern double kingSquareTable[BOARD_SIZE];
+
+extern double kingSquareTableEndGame[BOARD_SIZE];
+
 
 #endif /* constants_h */

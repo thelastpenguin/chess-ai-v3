@@ -75,7 +75,12 @@ public:
     }
 
     typedef std::vector<Move> MoveList;
-    void generateMoves(MoveList& moves, TTeam player) const;
+    void generateMoves(MoveList& moves, TTeam player, bool* attack_squares = nullptr) const;
+
+	// TODO: implement these for a MUCHLY improved scoring function
+	// void isProtected(int index, TTeam byPlayer) const;
+	// void isAttacked(int index, TTeam byPlayer) const;
+	// void isPinned(int index, TTeam byPlayer) const;
 };
 
 /**

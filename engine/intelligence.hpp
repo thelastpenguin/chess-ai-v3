@@ -12,18 +12,29 @@
 #include "constants.hpp"
 #include "board.hpp"
 
+struct TTEntry {
+    static const TScore kEmpty = std::numeric_limits<TScore>::max();
+
+    uint64_t hash = 0;
+    int depth = 0;
+    TScore score = kEmpty;
+
+    bool isEmpty() {
+        return score == kEmpty;
+    }
+};
+
 class TransTable {
 private:
     const size_t size;
-    TScore* table;
-public:
-    static const TScore kEmpty = std::numeric_limits<TScore>::max();
 
+    TTEntry* table;
+public:
     TransTable(size_t size);
     ~TransTable();
 
-    void insert(uint64_t hash, TScore score);
-    TScore lookup(uint64_t hash) const;
+    void insert(uint64_t hash, int depth, TScore score);
+    TTEntry* lookup(uint64_t hash, int depth) const;
 };
 
 
@@ -33,6 +44,12 @@ public:
 };
 
 struct ScoreFunction {
+
+	double opennessMult = 7.0;
+	double materialMult = 1.0;
+	double duplicatePieceMult = 1.0;
+	double pawnProtectionMult = 15.0;
+
 	TScore operator() (const Board& board);
 };
 
@@ -43,7 +60,8 @@ private:
     static constexpr double runTimeLimit = 2.0;
     int difficulty = 0;
     Move::TMoveScratchStack stack;
-    TransTable tt;
+    TransTable ttWhite;
+    TransTable ttBlack;
 
     TScore negamax(Board& board, TTeam color, int depth, Move* result = nullptr,
                    clock_t maxTime = clock() + CLOCKS_PER_SEC * runTimeLimit,
@@ -52,7 +70,7 @@ private:
                    );
 
 public:
-    AIPlayer(int difficulty = 7) : tt(15485863), difficulty(difficulty) {};
+    AIPlayer(int difficulty = 7) : ttWhite(15485863), ttBlack(15485863), difficulty(difficulty) {};
     TScore pickBestMove(const Board& b, TTeam team, Move* result);
 };
 
